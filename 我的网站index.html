@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lumina · 高级图片存储空间</title>
+  <!-- 引入图标 -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    // Tailwind 配置
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            primary: '#6366f1',
+            secondary: '#8b5cf6',
+            dark: '#0f172a',
+            light: '#f8fafc'
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif']
+          }
+        }
+      }
+    }
+  </script>
+  <style type="text/tailwindcss">
+    @layer utilities {
+      .content-auto {
+        content-visibility: auto;
+      }
+      .glass {
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+      }
+      .dark .glass-dark {
+        background: rgba(15, 23, 42, 0.2);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+      }
+      .masonry-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 1.5rem;
+      }
+      .img-hover {
+        transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      .img-hover:hover {
+        transform: translateY(-4px) scale(1.02);
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+      }
+    }
+  </style>
+</head>
+<body class="bg-gradient-to-br from-light to-gray-100 dark:from-dark dark:to-slate-900 min-h-screen transition-colors duration-300">
+  <!-- 顶部导航 -->
+  <header class="fixed top-0 left-0 right-0 z-50 glass dark:glass-dark border-b border-white/20 dark:border-white/10">
+    <div class="container mx-auto px-4 py-4 flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-primary to-secondary flex items-center justify-center text-white">
+          <i class="fa-solid fa-image"></i>
+        </div>
+        <h1 class="text-xl font-semibold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">Lumina</h1>
+      </div>
+      
+      <div class="flex items-center gap-4">
+        <button id="theme-toggle" class="w-10 h-10 rounded-full flex items-center justify-center hover:bg-white/20 transition-all">
+          <i class="fa-solid fa-moon dark:hidden text-gray-700"></i>
+          <i class="fa-solid fa-sun hidden dark:block text-yellow-300"></i>
+        </button>
+        <label for="file-upload" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-primary to-secondary text-white font-medium cursor-pointer transition-all hover:shadow-lg hover:shadow-primary/20 active:scale-95">
+          <i class="fa-solid fa-plus mr-2"></i>上传图片
+        </label>
+      </div>
+    </div>
+  </header>
+
+  <!-- 主内容区 -->
+  <main class="container mx-auto px-4 pt-28 pb-20">
+    <!-- 上传区域 -->
+    <div id="drop-area" class="mb-12 border-2 border-dashed border-gray-300 dark:border-slate-700 rounded-2xl p-10 text-center transition-all hover:border-primary/50 cursor-pointer">
+      <div class="flex flex-col items-center gap-4">
+        <div class="w-20 h-20 rounded-full bg-primary/10 dark:bg-primary/20 flex items-center justify-center">
+          <i class="fa-solid fa-cloud-arrow-up text-3xl text-primary"></i>
+        </div>
+        <h2 class="text-xl font-medium text-gray-700 dark:text-gray-200">拖拽图片到此处或点击上传</h2>
+        <p class="text-gray-500 dark:text-gray-400">支持 JPG、PNG、WEBP 格式</p>
+        <input id="file-upload" type="file" accept="image/*" multiple class="hidden">
+      </div>
+    </div>
+
+    <!-- 图片展示区 -->
+    <div class="flex items-center justify-between mb-8">
+      <h2 class="text-2xl font-semibold text-gray-800 dark:text-white">我的图库</h2>
+      <span id="image-count" class="text-sm text-gray-500 dark:text-gray-400">共 0 张图片</span>
+    </div>
+    
+    <div id="gallery" class="masonry-grid"></div>
+    
+    <!-- 空状态 -->
+    <div id="empty-state" class="py-20 text-center">
+      <div class="flex flex-col items-center gap-4">
+        <div class="w-24 h-24 rounded-full bg-gray-100 dark:bg-slate-800 flex items-center justify-center">
+          <i class="fa-regular fa-images text-4xl text-gray-400 dark:text-slate-600"></i>
+        </div>
+        <h3 class="text-xl font-medium text-gray-600 dark:text-gray-300">暂无图片</h3>
+        <p class="text-gray-500 dark:text-gray-400">上传你的第一张图片开始吧</p>
+      </div>
+    </div>
+  </main>
+
+  <!-- 预览模态框 -->
+  <div id="preview-modal" class="fixed inset-0 z-50 bg-black/90 hidden items-center justify-center p-4">
+    <button id="close-preview" class="absolute top-6 right-6 w-12 h-12 rounded-full bg-white/10 flex items-center justify-center text-white hover:bg-white/20 transition-all">
+      <i class="fa-solid fa-xmark text-xl"></i>
+    </button>
+    <button id="prev-img" class="absolute left-6 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-white/10 flex items-center justify-center text-white hover:bg-white/20 transition-all">
+      <i class="fa-solid fa-chevron-left"></i>
+    </button>
+    <button id="next-img" class="absolute right-6 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-white/10 flex items-center justify-center text-white hover:bg-white/20 transition-all">
+      <i class="fa-solid fa-chevron-right"></i>
+    </button>
+    <img id="preview-img" class="max-h-[90vh] max-w-[90vw] object-contain" src="">
+  </div>
+
+  <script>
+    // DOM 元素
+    const dropArea = document.getElementById('drop-area');
+    const fileUpload = document.getElementById('file-upload');
+    const gallery = document.getElementById('gallery');
+    const emptyState = document.getElementById('empty-state');
+    const imageCount = document.getElementById('image-count');
+    const themeToggle = document.getElementById('theme-toggle');
+    const previewModal = document.getElementById('preview-modal');
+    const previewImg = document.getElementById('preview-img');
+    const closePreview = document.getElementById('close-preview');
+    const prevImg = document.getElementById('prev-img');
+    const nextImg = document.getElementById('next-img');
+    
+    // 图片数组 & 当前预览索引
+    let images = JSON.parse(localStorage.getItem('lumina-images')) || [];
+    let currentPreviewIndex = 0;
+    
+    // 初始化
+    document.addEventListener('DOMContentLoaded', () => {
+      renderImages();
+      updateImageCount();
+      
+      // 深色模式
+      if (localStorage.getItem('theme') === 'dark' || 
+          (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        document.documentElement.classList.add('dark');
+      }
+    });
+    
+    // 主题切换
+    themeToggle.addEventListener('click', () => {
+      document.documentElement.classList.toggle('dark');
+      localStorage.setItem('theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light');
+    });
+    
+    // 上传事件
+    fileUpload.addEventListener('change', handleFiles);
+    dropArea.addEventListener('click', () => fileUpload.click());
+    
+    // 拖拽事件
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+      dropArea.addEventListener(eventName, preventDefaults, false);
+    });
+    function preventDefaults(e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    ['dragenter', 'dragover'].forEach(eventName => {
+      dropArea.addEventListener(eventName, highlight, false);
+    });
+    ['dragleave', 'drop'].forEach(eventName => {
+      dropArea.addEventListener(eventName, unhighlight, false);
+    });
+    function highlight() {
+      dropArea.classList.add('border-primary', 'bg-primary/5');
+    }
+    function unhighlight() {
+      dropArea.classList.remove('border-primary', 'bg-primary/5');
+    }
+    dropArea.addEventListener('drop', handleDrop, false);
+    function handleDrop(e) {
+      const dt = e.dataTransfer;
+      const files = dt.files;
+      handleFiles({ target: { files } });
+    }
+    
+    // 处理文件
+    function handleFiles(e) {
+      const files = e.target.files;
+      if (!files.length) return;
+      
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        if (!file.type.match('image.*')) continue;
+        
+        const reader = new FileReader();
+        reader.onload = (function(file) {
+          return function(e) {
+            const imageData = {
+              id: Date.now() + Math.random(),
+              url: e.target.result,
+              name: file.name,
+              size: formatFileSize(file.size),
+              uploadTime: new Date().toLocaleString()
+            };
+            images.unshift(imageData);
+            saveImages();
+            renderImages();
+            updateImageCount();
+          };
+        })(file);
+        reader.readAsDataURL(file);
+      }
+    }
+    
+    // 渲染图片
+    function renderImages() {
+      if (images.length === 0) {
+        emptyState.classList.remove('hidden');
+        return;
+      }
+      
+      emptyState.classList.add('hidden');
+      gallery.innerHTML = '';
+      
+      images.forEach((img, index) => {
+        const card = document.createElement('div');
+        card.className = 'rounded-2xl overflow-hidden shadow-lg img-hover relative group';
+        card.innerHTML = `
+          <img src="${img.url}" alt="${img.name}" class="w-full h-auto object-cover cursor-pointer" data-index="${index}">
+          <div class="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all flex items-end opacity-0 group-hover:opacity-100">
+            <div class="p-4 w-full">
+              <div class="flex justify-between items-center">
+                <div class="text-white text-sm truncate">${img.name}</div>
+                <button class="delete-btn w-8 h-8 rounded-full bg-red-500/80 text-white flex items-center justify-center ml-2" data-id="${img.id}">
+                  <i class="fa-solid fa-trash"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+        gallery.appendChild(card);
+        
+        // 预览事件
+        card.querySelector('img').addEventListener('click', () => {
+          openPreview(index);
+        });
+      });
+      
+      // 删除事件
+      document.querySelectorAll('.delete-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const id = parseFloat(btn.dataset.id);
+          images = images.filter(img => img.id !== id);
+          saveImages();
+          renderImages();
+          updateImageCount();
+        });
+      });
+    }
+    
+    // 预览功能
+    function openPreview(index) {
+      currentPreviewIndex = index;
+      previewImg.src = images[index].url;
+      previewModal.classList.remove('hidden');
+      previewModal.classList.add('flex');
+      document.body.style.overflow = 'hidden';
+    }
+    
+    function closePreviewModal() {
+      previewModal.classList.add('hidden');
+      previewModal.classList.remove('flex');
+      document.body.style.overflow = '';
+    }
+    
+    closePreview.addEventListener('click', closePreviewModal);
+    previewModal.addEventListener('click', (e) => {
+      if (e.target === previewModal) closePreviewModal();
+    });
+    
+    prevImg.addEventListener('click', () => {
+      currentPreviewIndex = (currentPreviewIndex - 1 + images.length) % images.length;
+      previewImg.src = images[currentPreviewIndex].url;
+    });
+    
+    nextImg.addEventListener('click', () => {
+      currentPreviewIndex = (currentPreviewIndex + 1) % images.length;
+      previewImg.src = images[currentPreviewIndex].url;
+    });
+    
+    // 键盘控制
+    document.addEventListener('keydown', (e) => {
+      if (previewModal.classList.contains('flex')) {
+        if (e.key === 'Escape') closePreviewModal();
+        if (e.key === 'ArrowLeft') prevImg.click();
+        if (e.key === 'ArrowRight') nextImg.click();
+      }
+    });
+    
+    // 保存到本地
+    function saveImages() {
+      localStorage.setItem('lumina-images', JSON.stringify(images));
+    }
+    
+    // 更新计数
+    function updateImageCount() {
+      imageCount.textContent = `共 ${images.length} 张图片`;
+    }
+    
+    // 文件大小格式化
+    function formatFileSize(bytes) {
+      if (bytes === 0) return '0 Bytes';
+      const k = 1024;
+      const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+  </script>
+</body>
+</html>
